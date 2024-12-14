@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=pptx2md
+Exec=pptx2md
+Icon=pptx2md
+X-AppImage-Arch=x86_64
+X-AppImage-Version=2.0.6
+X-AppImage-Name=pptx2md
+Terminal=true
+Categories=Utility;

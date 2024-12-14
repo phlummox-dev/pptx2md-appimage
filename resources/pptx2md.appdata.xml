@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="console-application">
+  <!-- <id>com.github.ssine.pptx2md</id> -->
+  <id>pptx2md</id>
+  <metadata_license>FSFAP</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>pptx2md</name>
+  <summary>Convert pptx files to markdown</summary>
+  <description>
+    <p>
+      Convert pptx files to markdown
+    </p>
+  </description>
+  <icon type="stock">pptx2md</icon>
+  <url type="homepage">https://github.com/ssine/pptx2md</url>
+  <provides>
+    <binary>pptx2md</binary>
+  </provides>
+</component>
