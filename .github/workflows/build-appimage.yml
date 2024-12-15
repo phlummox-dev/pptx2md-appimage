@@ -1,4 +1,4 @@
-name: Build AppImage
+name: Build Wheels and AppImage
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
   release:
     types:
       - created
+
 
 jobs:
   build-appimage:
@@ -19,6 +20,17 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y make curl
+          python3 -m pip install python-appimage
+
+      - name: Build wheels using Docker
+        run: |
+          make wheels.tgz
+
+      - name: Upload TGZ file as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels.tgz
+          path: wheels.tgz
 
       - name: Build the AppImage
         run: |
@@ -27,6 +39,7 @@ jobs:
       - name: Upload AppImage as artifact
         uses: actions/upload-artifact@v4
         with:
+          name: pptx2md-2.0.6-x86_64.AppImage
           path: ./pptx2md-2.0.6-x86_64.AppImage
           if-no-files-found: error
 

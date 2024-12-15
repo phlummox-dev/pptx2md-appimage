@@ -1,5 +1,8 @@
+Potentially useful notes if hacking the codebase.
 
 ## AppImage rules
+
+what must be in an AppImage?
 
 See <https://github.com/AppImage/AppImageSpec/blob/master/draft.md#contents-of-the-image>
 
@@ -42,11 +45,38 @@ trap for the unwary:
   (Probably 1.0 or 1.5.)
 - To specify the version of the app, we want `X-AppImage-Version`
 
-## `appimagetool-x86_64.AppImage`
+## tasks involved in creating a python appimage from a base
 
-This is built "continuously", there are no versions.
+Outlined here in case we ever need to do it ourselves. Currently, `python-appimage`
+handles most of these tasks. See commit 0da3741d or earlier for all the details of what we
+used to do.
 
-So in the interests of repeatable builds, a copy of the tool is checked into the repo.
+- download a "base" appimage - we use `python3.10.16-cp310-cp310-manylinux2014_x86_64.AppImage`
+- extract the squashfs directory from the appimage by invoking it with
+  `--appimage-extract`
+- invoke `python3.10 -m pip install` to install pptx2md (==2.0.6) and all its
+  prerequisites. Ideally, we want them all to be binary wheels, and for all of them to be
+  versions that `cp310-manylinux2014_x86` would've picked up.
+
+  pptx2md itself is pure python, so we could theoretically download any binary wheel for
+  that and it should work.
+
+- fix the `AppRun` "entry point" so instead of invoking python3.10, it invokes our desired
+  script
+- remove old python .desktop, .png, .DirIcon, and metainfo XML files
+- install our own versions of those files - in e.g. directories like usr/share/icons, with nice symlinks to
+  "top-level" versions of those files.
+- invoke `appimagetool-x86_64.AppImage` on the squashfs directory, to build a new
+  AppImage.
+
+Some comments:
+
+- `appimagetool-x86_64.AppImage`
+
+  This is built "continuously", there are no versions.
+
+  So in the interests of repeatable builds, a copy of the tool was checked into the repo,
+  but is deleted from later commits as we now use `python-appimage`.
 
 
 

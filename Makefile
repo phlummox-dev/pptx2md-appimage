@@ -1,66 +1,50 @@
 # variables
 
+TARGET = pptx2md-x86_64.AppImage
+
 PYTHON_APPIMAGE = python3.10.16-cp310-cp310-manylinux2014_x86_64.AppImage
 PYTHON_APPIMAGE_URL = https://github.com/niess/python-appimage/releases/download/python3.10/$(PYTHON_APPIMAGE)
-SQUASHFS_DIR = ./squashfs-root
-APPIMAGE_TOOL_APPIMAGE = appimagetool-x86_64.AppImage
-APPIMAGE_TOOL_APPIMAGE_URL = https://github.com/AppImage/AppImageKit/releases/download/continuous/$(APPIMAGE_TOOL_APPIMAGE)
 
-TARGET = pptx2md-2.0.6-x86_64.AppImage
+SHELL = bash
 
 # recipes
 
 all: $(TARGET)
+
+# construct a .tgz of all binary wheels that would've been installed for manylinux2014_x86_64 python 3.10
+# would be nice if `python-appimage` could be convinced to do this for us, but there doesn't seem to be
+# an obvious way.
+# (NB we don't actually _use_ wheels.tgz, except as an artifact on github, since the files we need are all
+# in `wheels` anyway ... the tgz is really just a marker that everything completed ok)
+wheels.tgz:
+	mkdir -p wheels
+	docker run --rm -i -v $(PWD):/work --workdir /work quay.io/pypa/manylinux2014_x86_64 \
+		sh -c '/opt/python/cp310-cp310/bin/pip3 download pptx2md==2.0.6 --only-binary=:all: -d ./wheels'
+	set -e -o pipefail && (cd wheels && find . -type f) | sort | tar -C wheels -cf - --owner=root:0 --group=root:0 --format=ustar -T - --mtime='UTC 1970-01-01 00:00:00'  | gzip --no-name > wheels.tgz
+
 
 # download python appimage if needed
 $(PYTHON_APPIMAGE):
 	curl -LO $(PYTHON_APPIMAGE_URL)
 	chmod +x $(PYTHON_APPIMAGE)
 
-# download appimage tool if needed
-$(APPIMAGE_TOOL_APPIMAGE):
-	curl -LO $(APPIMAGE_TOOL_APPIMAGE_URL)
-	chmod +x $(APPIMAGE_TOOL_APPIMAGE)
-
-# extract squashfs dir
-$(SQUASHFS_DIR): $(PYTHON_APPIMAGE)
-	./$(PYTHON_APPIMAGE) --appimage-extract
-
-$(TARGET): $(SQUASHFS_DIR) $(APPIMAGE_TOOL_APPIMAGE)
-	# install pptx2md under ./squashfs-root/opt/python3.10/lib/python3.10/site-packages
-	$(SQUASHFS_DIR)/opt/python3.10/bin/python3.10 -m pip install 'pptx2md==2.0.6'
-
-	# edit the AppRun file to call pptx2md
-	sed -i 's/^\# Call Python.*/\# Invoke pptx2md/' $(SQUASHFS_DIR)/AppRun
-	sed -i '\|APPDIR/opt/python3.10/bin/python3.10| s|bin/python3.10|bin/pptx2md|' $(SQUASHFS_DIR)/AppRun
-
-	# remove old python .desktop, .png, .DirIcon, metainfo files
-	rm -rf $(SQUASHFS_DIR)/python* $(SQUASHFS_DIR)/.DirIcon
-	rm -rf $(SQUASHFS_DIR)/usr/share/metainfo/python*
-
-	# install new icon, desktop etc. files
-	
-	# icon
-	install -d $(SQUASHFS_DIR)/usr/share/icons
-	install -m 0755 resources/pptx2md.png $(SQUASHFS_DIR)/usr/share/icons
-	
-	# .desktop
-	install -d $(SQUASHFS_DIR)/usr/share/applications
-	install -m 0755 resources/pptx2md.desktop $(SQUASHFS_DIR)/usr/share/applications
-	
-	# metainfo file
-	install -d $(SQUASHFS_DIR)/usr/share/metainfo
-	install -m 0755 resources/pptx2md.appdata.xml $(SQUASHFS_DIR)/usr/share/metainfo
-
-	# create symlinks
-	ln -s -r $(SQUASHFS_DIR)/pptx2md.png $(SQUASHFS_DIR)/.DirIcon
-	ln -s -r $(SQUASHFS_DIR)/usr/share/applications/pptx2md.desktop $(SQUASHFS_DIR)/
-	ln -s -r $(SQUASHFS_DIR)/usr/share/icons/pptx2md.png $(SQUASHFS_DIR)/
-
-	# build AppImage file
-	./$(APPIMAGE_TOOL_APPIMAGE) --no-appstream $(SQUASHFS_DIR) $@
+# assumes we already have `python-appimage` installed,
+# e.g. via pip
+$(TARGET): wheels.tgz $(PYTHON_APPIMAGE)
+	rm -rf ./resources/requirements.txt
+	: "construct requirements.txt with exact wheel files specified"
+	for file in wheels/*whl; do \
+		echo "file://$(PWD)/$$file" >> ./resources/requirements.txt; \
+	done
+	python-appimage -v build app --base-image $(PYTHON_APPIMAGE) --linux-tag manylinux2014_x86_64 --python-version 3.10 --name pptx2md ./resources
+	: "make a copy of the appimage with version in filename"
+	cp -a $(TARGET) pptx2md-2.0.6-x86_64.AppImage
 
 clean:
-	rm -rf $(APPIMAGE_TOOL_APPIMAGE) $(SQUASHFS_DIR) $(PYTHON_APPIMAGE)	$(TARGET)
+	rm -rf $(TARGET) pptx2md-2.0.6-x86_64.AppImage \
+		wheels.tgz wheels resources/requirements.txt
 
 .PHONY: all clean
+
+.DELETE_ON_ERROR:
+
