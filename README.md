@@ -5,6 +5,16 @@ An AppImage wrapping a known-working version of [pptx2md](https://github.com/ssi
 
 This allows us to convert PowerPoint .pptx files to Markdown.
 
+## downloading and using
+
+Download the AppImage file from the "Relases" page
+(<https://github.com/phlummox-dev/pptx2md-appimage/releases>) and `chmod +x` on it to make
+it executable.
+
+You can then invoke it with [the same options][options] you would use for pptx2md.
+
+[options]: https://github.com/ssine/pptx2md?tab=readme-ov-file#usage 
+
 ## details
 
 A Python AppImage is used as a source, and munged a bit to get a working pptx2md appimage.
